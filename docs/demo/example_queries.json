@@ -1,0 +1,22 @@
+[
+  {
+    "query": "What is the retention period for audit records?",
+    "intent": "keyword and semantic retrieval",
+    "expected_behavior": "Answer with a citation to the verification policy PDF."
+  },
+  {
+    "query": "How does the system respond when retrieval confidence is low?",
+    "intent": "adaptive retry behavior",
+    "expected_behavior": "Explain deterministic query rewriting and bounded retries."
+  },
+  {
+    "query": "Which policy describes incident escalation?",
+    "intent": "multi-document evidence selection",
+    "expected_behavior": "Cite the incident escalation passage and show its page."
+  },
+  {
+    "query": "What is the moon made of?",
+    "intent": "insufficient evidence guard",
+    "expected_behavior": "Return an insufficient-evidence response for the demo corpus."
+  }
+]

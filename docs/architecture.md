@@ -1,8 +1,8 @@
-# Milestone 7 Architecture
+# System architecture
 
 ## Scope
 
-Milestone 7 adds independent citation and grounding verification downstream of generation. It intentionally does not implement streaming, frontend behavior, or RAG evaluation.
+This document describes the complete v1 system. Streaming remains intentionally deferred; evaluation is provided as an offline benchmark under `evaluation/`.
 
 ## Runtime flow
 

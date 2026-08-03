@@ -1,0 +1,12 @@
+[
+  {
+    "query": "What is the purpose of adaptive retrieval?",
+    "reference": "Adaptive retrieval evaluates evidence quality and retries weak queries before generation.",
+    "relevant_chunk_ids": []
+  },
+  {
+    "query": "How are citations verified?",
+    "reference": "Claims are extracted and matched to cited evidence using semantic support scoring.",
+    "relevant_chunk_ids": []
+  }
+]

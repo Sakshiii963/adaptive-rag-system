@@ -1,4 +1,4 @@
-# API Reference — Milestone 7
+# API reference
 
 ## `GET /api/v1/health`
 

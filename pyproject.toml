@@ -27,6 +27,11 @@ dev = [
   "pytest-cov>=6.0,<7.0",
   "ruff>=0.8,<1.0",
 ]
+evaluation = [
+  "datasets>=3.0,<4.0",
+  "ragas>=0.2,<1.0",
+  "reportlab>=4.0,<6.0",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["backend/app"]
