@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     retrieval_top_k: int = Field(default=5, ge=1, le=50)
     retrieval_candidate_multiplier: int = Field(default=4, ge=1, le=20)
     rrf_constant: int = Field(default=60, ge=1, le=1000)
+    reranker_model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    reranker_batch_size: int = Field(default=16, ge=1, le=128)
+    reranker_top_k: int = Field(default=5, ge=1, le=50)
 
     @computed_field
     @property

@@ -1,4 +1,4 @@
-# API Reference — Milestone 3
+# API Reference — Milestone 4
 
 ## `GET /api/v1/health`
 
@@ -24,6 +24,10 @@ Return persisted indexing state, stage, completion percentage, and failure detai
 ## `POST /api/v1/retrieval/search`
 
 Runs semantic ChromaDB and BM25 keyword retrieval in parallel. The request supports `query`, optional `top_k`, and document/filename/page filters. The response contains only retrieved passages, normalized channel scores, RRF scores, confidence, and latency; it does not call an LLM or generate an answer.
+
+## `POST /api/v1/retrieval/rerank`
+
+Runs the existing hybrid retrieval pipeline, then reranks its candidates with the local `cross-encoder/ms-marco-MiniLM-L-6-v2` model. `retrieval_top_k` controls the candidate pool and `top_k` controls the final output. Every original provenance and retrieval score is retained alongside the cross-encoder score, confidence, and latency. No answer is generated.
 
 ## Error contract
 

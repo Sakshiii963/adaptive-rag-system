@@ -2,9 +2,9 @@
 
 Local-first foundation for an adaptive, verifiable Retrieval-Augmented Generation system.
 
-## Milestone 3 status
+## Milestone 4 status
 
-The repository contains the production backend foundation, local PDF ingestion, and an evidence-only hybrid retrieval engine: multi-file upload, SHA-256 duplicate detection, PyMuPDF page extraction, semantic chunking, BGE embedding integration, Chroma persistence, SQLite metadata, BM25 indexing, parallel retrieval, RRF fusion, metadata filters, confidence, and latency telemetry. LangGraph query planning, reranking, answer generation, and citation verification are intentionally not implemented yet.
+The repository contains the production backend foundation, local PDF ingestion, hybrid retrieval, and a cross-encoder reranking layer: multi-file upload, SHA-256 duplicate detection, PyMuPDF page extraction, semantic chunking, BGE embedding integration, Chroma persistence, SQLite metadata, BM25 indexing, parallel retrieval, RRF fusion, metadata filters, confidence, latency telemetry, and cached batched reranking. LangGraph query planning, query rewriting, answer generation, and citation verification are intentionally not implemented yet.
 
 ## Run locally
 

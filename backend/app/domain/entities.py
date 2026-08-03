@@ -90,3 +90,24 @@ class HybridRetrievalResult:
     semantic_latency_ms: float
     keyword_latency_ms: float
     total_latency_ms: float
+
+
+@dataclass(frozen=True, slots=True)
+class RerankedCandidate:
+    """A hybrid candidate augmented with cross-encoder relevance while preserving retrieval data."""
+
+    candidate: HybridRetrievalCandidate
+    reranker_score: float
+    normalized_reranker_score: float
+    rank: int
+
+
+@dataclass(frozen=True, slots=True)
+class RerankingResult:
+    """Reranked evidence with confidence and model execution telemetry."""
+
+    candidates: tuple[RerankedCandidate, ...]
+    confidence_score: float
+    latency_ms: float
+    model_name: str
+    batch_size: int

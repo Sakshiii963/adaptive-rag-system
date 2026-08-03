@@ -8,10 +8,12 @@ from fastapi.testclient import TestClient
 from backend.app.dependencies import ApplicationContainer
 from backend.app.infrastructure.bm25.index import BM25IndexManager
 from backend.app.infrastructure.database.sqlite_repository import SQLiteMetadataRepository
+from backend.app.infrastructure.reranker.cross_encoder import LocalCrossEncoder
 from backend.app.infrastructure.vector.chroma_store import ChromaChunkStore
 from backend.app.main import create_app
 from backend.app.services.chunking import SemanticChunker
 from backend.app.services.ingestion import IngestionService
+from backend.app.services.reranking import RerankingService
 from backend.app.services.retrieval import HybridRetrievalEngine
 
 
@@ -46,6 +48,9 @@ def test_multi_pdf_upload_starts_persisted_jobs(tmp_path: Path) -> None:
             bm25_manager=ingestion.bm25_manager,
             rrf_constant=60,
             candidate_multiplier=4,
+        ),
+        reranking_service=RerankingService(
+            provider=LocalCrossEncoder(), model_name="test", batch_size=2
         ),
     )
     app = create_app()

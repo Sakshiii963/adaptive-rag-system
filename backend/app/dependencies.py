@@ -9,9 +9,11 @@ from backend.app.core.config import Settings
 from backend.app.infrastructure.bm25.index import BM25IndexManager
 from backend.app.infrastructure.database.sqlite_repository import SQLiteMetadataRepository
 from backend.app.infrastructure.embedding.bge_embeddings import BGEEmbeddingProvider
+from backend.app.infrastructure.reranker.cross_encoder import LocalCrossEncoder
 from backend.app.infrastructure.vector.chroma_store import ChromaChunkStore
 from backend.app.services.chunking import SemanticChunker
 from backend.app.services.ingestion import IngestionService
+from backend.app.services.reranking import RerankingService
 from backend.app.services.retrieval import HybridRetrievalEngine
 
 
@@ -24,6 +26,7 @@ class ApplicationContainer:
     bm25_manager: BM25IndexManager
     ingestion_service: IngestionService
     retrieval_engine: HybridRetrievalEngine
+    reranking_service: RerankingService
 
     @classmethod
     def create(cls, settings: Settings) -> "ApplicationContainer":
@@ -49,12 +52,18 @@ class ApplicationContainer:
             rrf_constant=settings.rrf_constant,
             candidate_multiplier=settings.retrieval_candidate_multiplier,
         )
+        reranking_service = RerankingService(
+            provider=LocalCrossEncoder(settings.reranker_model_name),
+            model_name=settings.reranker_model_name,
+            batch_size=settings.reranker_batch_size,
+        )
         return cls(
             repository=repository,
             vector_store=vector_store,
             bm25_manager=bm25_manager,
             ingestion_service=ingestion_service,
             retrieval_engine=retrieval_engine,
+            reranking_service=reranking_service,
         )
 
     def initialize(self) -> None:

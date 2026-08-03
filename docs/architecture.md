@@ -1,8 +1,8 @@
-# Milestone 3 Architecture
+# Milestone 4 Architecture
 
 ## Scope
 
-Milestone 3 adds evidence-only hybrid retrieval. It intentionally does not implement reranking, LangGraph query planning, query rewriting, answer generation, citation verification, or RAG evaluation.
+Milestone 4 adds cached, batched cross-encoder reranking over hybrid evidence. It intentionally does not implement LangGraph query planning, query rewriting, answer generation, citation verification, or RAG evaluation.
 
 ## Runtime flow
 
@@ -19,6 +19,8 @@ flowchart LR
     Search[Retrieval query] --> Parallel[Parallel Chroma + BM25]
     Parallel --> RRF[Score normalization + RRF fusion]
     RRF --> Evidence[Ranked evidence + confidence + latency]
+    Evidence --> Rerank[Cross-encoder batch reranking]
+    Rerank --> FinalEvidence[Reranked evidence + preserved scores]
     Router --> Health[Health endpoint]
     Router --> System[System metadata endpoint]
     Router --> Errors[Consistent error handlers]
@@ -42,4 +44,8 @@ Run `docker compose -f docker/docker-compose.yml up --build`. The container runs
 
 ## Retrieval boundaries
 
-`HybridRetrievalEngine` is an evidence-only application service. It delegates semantic search to ChromaDB, lexical search to `rank_bm25`, and executes both in parallel using a bounded thread pool. Reciprocal Rank Fusion removes duplicate chunk IDs and combines rankings without assuming semantic distances and BM25 scores share a scale. Query rewriting, LangGraph orchestration, generation, reranking, and citation verification remain later milestones.
+`HybridRetrievalEngine` is an evidence-only application service. It delegates semantic search to ChromaDB, lexical search to `rank_bm25`, and executes both in parallel using a bounded thread pool. Reciprocal Rank Fusion removes duplicate chunk IDs and combines rankings without assuming semantic distances and BM25 scores share a scale. Query rewriting, LangGraph orchestration, generation, and citation verification remain later milestones; reranking is applied separately by `RerankingService`.
+
+## Reranking boundaries
+
+`RerankingService` accepts a `HybridRetrievalResult`, forms `(original_query, chunk_text)` pairs, and invokes the cached local cross-encoder in one batched call. It sorts only by cross-encoder relevance, preserves the complete hybrid candidate object, and reports a sigmoid-normalized score, confidence, and model latency. The model adapter is lazy and lock-protected so application startup never downloads model weights and concurrent first requests cannot load duplicate models.
