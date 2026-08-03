@@ -1,8 +1,8 @@
-# Milestone 6 Architecture
+# Milestone 7 Architecture
 
 ## Scope
 
-Milestone 6 adds strict grounded answer generation downstream of the adaptive retrieval planner. It intentionally does not implement citation entailment verification, streaming, frontend behavior, or RAG evaluation.
+Milestone 7 adds independent citation and grounding verification downstream of generation. It intentionally does not implement streaming, frontend behavior, or RAG evaluation.
 
 ## Runtime flow
 
@@ -31,6 +31,12 @@ flowchart LR
     Prompt --> Ollama[Local Ollama / Qwen2.5]
     Ollama --> Guard[Citation-format + hallucination guard]
     Guard --> Answer[Grounded answer + coverage + confidence]
+    Answer --> Claims[Atomic claim extraction]
+    Claims --> CitationParse[Citation parsing]
+    CitationParse --> Support[Claim-to-evidence semantic support]
+    Support --> Verified[Verified answer + report]
+    Support -->|unsupported and retries remain| Targeted[Targeted retrieval repair]
+    Targeted --> Prompt
     Router --> Health[Health endpoint]
     Router --> System[System metadata endpoint]
     Router --> Errors[Consistent error handlers]
@@ -77,4 +83,12 @@ The typed `AgentState` carries the current query, attempt number, filters, resul
 - `ContextWindowManager` keeps ranked evidence order, preserves document/page/chunk provenance, and clips the final passage to a configured character budget.
 - `GroundedPromptBuilder` is versioned and explicitly forbids outside knowledge, uncited factual claims, invented citation numbers, and hidden-instruction disclosure.
 - The Ollama adapter uses `stream=false`, temperature zero, and a bounded output budget. Its provider port is stateless and batch-friendly, leaving streaming as a future adapter capability.
-- The hallucination guard rejects empty output, unsupported citation indexes, missing citations, and the model's ungrounded answer format. It does not perform claim entailment; citation verification is a later milestone.
+- The hallucination guard rejects empty output, unsupported citation indexes, missing citations, and the model's ungrounded answer format. Claim entailment is performed downstream by the independent verification module.
+
+## Citation verification decisions
+
+- `AtomicClaimExtractor` uses deterministic sentence, semicolon, and line boundaries while retaining each claim's original citation markers.
+- `CitationParser` audits every numeric marker, including unknown markers, before semantic scoring.
+- `SemanticSupportVerifier` sends `(claim, cited passage)` pairs through the existing local cross-encoder and requires every cited passage for a claim to meet the configured normalized support threshold.
+- Coverage is the supported-claim fraction; grounding combines claim coverage and valid-citation fraction. Unsupported claims and unknown citation IDs are never silently treated as supported.
+- The verification endpoint injects targeted retry and regeneration callbacks. After the retry budget, only supported claims may remain; if configured minimum coverage is not met, the final answer is `Insufficient evidence.`

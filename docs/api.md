@@ -1,4 +1,4 @@
-# API Reference — Milestone 6
+# API Reference — Milestone 7
 
 ## `GET /api/v1/health`
 
@@ -36,6 +36,10 @@ Runs the bounded LangGraph adaptive retrieval planner. It executes hybrid retrie
 ## `POST /api/v1/generation/answer`
 
 Runs the adaptive retrieval agent and sends only successful reranked evidence to local Ollama/Qwen2.5. The response includes the grounded answer, inline citation markers mapped to document/page/chunk provenance, confidence, evidence coverage, prompt version, and the supplied evidence. If the agent does not produce evidence, or the model output violates citation-format guards, it returns `Insufficient evidence.` without using outside context.
+
+## `POST /api/v1/verification/answer`
+
+Runs generation, extracts atomic claims, parses inline citations, verifies every cited passage with the local cross-encoder, and returns a grounding report. Unsupported claims/citations trigger targeted retrieval and regeneration when the configured verification retry budget permits; otherwise unsupported material is removed or the endpoint returns `Insufficient evidence.`.
 
 ## Error contract
 

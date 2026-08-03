@@ -123,7 +123,7 @@ class GroundedCitation:
 
 @dataclass(frozen=True, slots=True)
 class GroundedAnswer:
-    """Grounded model output and evidence metrics; citation entailment is a later milestone."""
+    """Grounded model output and evidence metrics before independent citation verification."""
 
     answer: str
     status: Literal["answer", "insufficient_evidence"]

@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     generation_context_max_chars: int = Field(default=12000, ge=1000, le=100000)
     generation_max_output_tokens: int = Field(default=512, ge=64, le=4096)
     ollama_timeout_seconds: float = Field(default=120, ge=1, le=600)
+    verification_support_threshold: float = Field(default=0.65, ge=0, le=1)
+    verification_min_coverage: float = Field(default=1.0, ge=0, le=1)
+    verification_max_retries: int = Field(default=1, ge=0, le=5)
+    verification_batch_size: int = Field(default=16, ge=1, le=128)
 
     @computed_field
     @property

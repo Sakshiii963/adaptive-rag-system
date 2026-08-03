@@ -19,6 +19,8 @@ from backend.app.services.chunking import SemanticChunker
 from backend.app.services.ingestion import IngestionService
 from backend.app.services.reranking import RerankingService
 from backend.app.services.retrieval import HybridRetrievalEngine
+from backend.app.verification.service import CitationVerificationService
+from backend.app.verification.support import SemanticSupportVerifier
 
 
 class FakeEmbeddingProvider:
@@ -76,6 +78,11 @@ def test_multi_pdf_upload_starts_persisted_jobs(tmp_path: Path) -> None:
             prompt_builder=GroundedPromptBuilder(),
             context_manager=ContextWindowManager(2000),
             max_output_tokens=64,
+        ),
+        verification_service=CitationVerificationService(
+            support_verifier=SemanticSupportVerifier(LocalCrossEncoder(), 0.65, 2),
+            min_coverage=1.0,
+            max_retries=1,
         ),
     )
     app = create_app()

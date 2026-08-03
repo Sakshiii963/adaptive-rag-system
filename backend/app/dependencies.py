@@ -20,6 +20,8 @@ from backend.app.services.chunking import SemanticChunker
 from backend.app.services.ingestion import IngestionService
 from backend.app.services.reranking import RerankingService
 from backend.app.services.retrieval import HybridRetrievalEngine
+from backend.app.verification.service import CitationVerificationService
+from backend.app.verification.support import SemanticSupportVerifier
 
 
 @dataclass(slots=True)
@@ -34,6 +36,7 @@ class ApplicationContainer:
     reranking_service: RerankingService
     adaptive_agent: AdaptiveRetrievalAgent
     generation_service: GroundedGenerationService
+    verification_service: CitationVerificationService
 
     @classmethod
     def create(cls, settings: Settings) -> "ApplicationContainer":
@@ -77,6 +80,15 @@ class ApplicationContainer:
             context_manager=ContextWindowManager(settings.generation_context_max_chars),
             max_output_tokens=settings.generation_max_output_tokens,
         )
+        verification_service = CitationVerificationService(
+            support_verifier=SemanticSupportVerifier(
+                scorer=reranking_service.provider,
+                threshold=settings.verification_support_threshold,
+                batch_size=settings.verification_batch_size,
+            ),
+            min_coverage=settings.verification_min_coverage,
+            max_retries=settings.verification_max_retries,
+        )
         return cls(
             repository=repository,
             vector_store=vector_store,
@@ -86,6 +98,7 @@ class ApplicationContainer:
             reranking_service=reranking_service,
             adaptive_agent=adaptive_agent,
             generation_service=generation_service,
+            verification_service=verification_service,
         )
 
     def initialize(self) -> None:
