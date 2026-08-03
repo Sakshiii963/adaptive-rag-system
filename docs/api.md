@@ -1,4 +1,4 @@
-# API Reference — Milestone 4
+# API Reference — Milestone 5
 
 ## `GET /api/v1/health`
 
@@ -28,6 +28,10 @@ Runs semantic ChromaDB and BM25 keyword retrieval in parallel. The request suppo
 ## `POST /api/v1/retrieval/rerank`
 
 Runs the existing hybrid retrieval pipeline, then reranks its candidates with the local `cross-encoder/ms-marco-MiniLM-L-6-v2` model. `retrieval_top_k` controls the candidate pool and `top_k` controls the final output. Every original provenance and retrieval score is retained alongside the cross-encoder score, confidence, and latency. No answer is generated.
+
+## `POST /api/v1/agent/run`
+
+Runs the bounded LangGraph adaptive retrieval planner. It executes hybrid retrieval, cross-encoder reranking, confidence evaluation, deterministic query rewriting, and retry transitions until the threshold is met or the retry budget is exhausted. It returns the original/re-written query, status (`evidence` or `insufficient_evidence`), confidence, reasoning steps, structured retrieval trace, and reranked evidence only.
 
 ## Error contract
 

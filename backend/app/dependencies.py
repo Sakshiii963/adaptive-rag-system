@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import Request
 
+from backend.app.agent.graph import AdaptiveRetrievalAgent
 from backend.app.core.config import Settings
 from backend.app.infrastructure.bm25.index import BM25IndexManager
 from backend.app.infrastructure.database.sqlite_repository import SQLiteMetadataRepository
@@ -27,6 +28,7 @@ class ApplicationContainer:
     ingestion_service: IngestionService
     retrieval_engine: HybridRetrievalEngine
     reranking_service: RerankingService
+    adaptive_agent: AdaptiveRetrievalAgent
 
     @classmethod
     def create(cls, settings: Settings) -> "ApplicationContainer":
@@ -57,6 +59,10 @@ class ApplicationContainer:
             model_name=settings.reranker_model_name,
             batch_size=settings.reranker_batch_size,
         )
+        adaptive_agent = AdaptiveRetrievalAgent(
+            retrieval_engine=retrieval_engine,
+            reranking_service=reranking_service,
+        )
         return cls(
             repository=repository,
             vector_store=vector_store,
@@ -64,6 +70,7 @@ class ApplicationContainer:
             ingestion_service=ingestion_service,
             retrieval_engine=retrieval_engine,
             reranking_service=reranking_service,
+            adaptive_agent=adaptive_agent,
         )
 
     def initialize(self) -> None:

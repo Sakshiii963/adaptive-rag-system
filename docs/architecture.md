@@ -1,8 +1,8 @@
-# Milestone 4 Architecture
+# Milestone 5 Architecture
 
 ## Scope
 
-Milestone 4 adds cached, batched cross-encoder reranking over hybrid evidence. It intentionally does not implement LangGraph query planning, query rewriting, answer generation, citation verification, or RAG evaluation.
+Milestone 5 adds a bounded LangGraph adaptive retrieval planner. It intentionally does not implement answer generation, citation verification, streaming, frontend behavior, or RAG evaluation.
 
 ## Runtime flow
 
@@ -21,6 +21,12 @@ flowchart LR
     RRF --> Evidence[Ranked evidence + confidence + latency]
     Evidence --> Rerank[Cross-encoder batch reranking]
     Rerank --> FinalEvidence[Reranked evidence + preserved scores]
+    FinalEvidence --> Confidence[Evaluate confidence]
+    Confidence -->|threshold met| Return[Return evidence]
+    Confidence -->|weak and retries remain| Rewrite[Deterministic rewrite]
+    Rewrite --> Retry[Retry node]
+    Retry --> Parallel
+    Confidence -->|budget exhausted| Insufficient[Insufficient evidence]
     Router --> Health[Health endpoint]
     Router --> System[System metadata endpoint]
     Router --> Errors[Consistent error handlers]
@@ -49,3 +55,14 @@ Run `docker compose -f docker/docker-compose.yml up --build`. The container runs
 ## Reranking boundaries
 
 `RerankingService` accepts a `HybridRetrievalResult`, forms `(original_query, chunk_text)` pairs, and invokes the cached local cross-encoder in one batched call. It sorts only by cross-encoder relevance, preserves the complete hybrid candidate object, and reports a sigmoid-normalized score, confidence, and model latency. The model adapter is lazy and lock-protected so application startup never downloads model weights and concurrent first requests cannot load duplicate models.
+
+## LangGraph nodes
+
+- `hybrid_retrieval`: executes the existing parallel semantic/BM25 engine for the current query.
+- `cross_encoder_reranking`: reranks the hybrid candidates with the original/current query.
+- `evaluate_confidence`: combines reranker confidence, source agreement, and evidence coverage.
+- `rewrite_query`: applies deterministic evidence-oriented terms without calling an LLM; repeated queries are blocked.
+- `retry_retrieval`: records the bounded retry transition before returning to hybrid retrieval.
+- Conditional edges return evidence when the threshold is met, or return `insufficient_evidence` after the retry budget is exhausted.
+
+The typed `AgentState` carries the current query, attempt number, filters, results, confidence, seen-query set, trace, and reasoning steps. Every node emits a timestamped structured trace event and a structured log entry.

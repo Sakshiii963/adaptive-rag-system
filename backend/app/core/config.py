@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     reranker_model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     reranker_batch_size: int = Field(default=16, ge=1, le=128)
     reranker_top_k: int = Field(default=5, ge=1, le=50)
+    agent_confidence_threshold: float = Field(default=0.65, ge=0, le=1)
+    agent_max_retries: int = Field(default=2, ge=0, le=10)
 
     @computed_field
     @property
