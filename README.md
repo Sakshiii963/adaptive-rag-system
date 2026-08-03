@@ -2,9 +2,9 @@
 
 Local-first foundation for an adaptive, verifiable Retrieval-Augmented Generation system.
 
-## Milestone 5 status
+## Milestone 6 status
 
-The repository contains the production backend foundation, local PDF ingestion, hybrid retrieval, cross-encoder reranking, and a bounded LangGraph adaptive retrieval planner. It performs deterministic local query rewrites, retries weak retrieval, emits structured reasoning traces, and returns reranked evidence only. Answer generation, citation verification, and the frontend are intentionally not implemented yet.
+The repository contains the production backend foundation, local PDF ingestion, hybrid retrieval, cross-encoder reranking, a bounded LangGraph adaptive retrieval planner, and strict grounded generation through local Ollama/Qwen2.5. Generation consumes only successful agent evidence, preserves provenance, enforces inline citation format, and returns controlled insufficient-evidence results. Citation verification, evaluation, streaming, and the frontend are intentionally not implemented yet.
 
 ## Run locally
 

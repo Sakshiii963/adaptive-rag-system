@@ -111,3 +111,26 @@ class RerankingResult:
     latency_ms: float
     model_name: str
     batch_size: int
+
+
+@dataclass(frozen=True, slots=True)
+class GroundedCitation:
+    """An inline citation marker mapped to the exact reranked evidence item supplied to the model."""
+
+    marker: int
+    candidate: RerankedCandidate
+
+
+@dataclass(frozen=True, slots=True)
+class GroundedAnswer:
+    """Grounded model output and evidence metrics; citation entailment is a later milestone."""
+
+    answer: str
+    status: Literal["answer", "insufficient_evidence"]
+    confidence_score: float
+    evidence_coverage_score: float
+    citations: tuple[GroundedCitation, ...]
+    evidence: tuple[RerankedCandidate, ...]
+    rewritten_query: str | None
+    prompt_version: str
+    model_name: str

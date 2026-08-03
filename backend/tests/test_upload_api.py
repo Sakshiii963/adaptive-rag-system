@@ -7,6 +7,9 @@ from fastapi.testclient import TestClient
 
 from backend.app.agent.graph import AdaptiveRetrievalAgent
 from backend.app.dependencies import ApplicationContainer
+from backend.app.generation.context import ContextWindowManager
+from backend.app.generation.prompt import GroundedPromptBuilder
+from backend.app.generation.service import GroundedGenerationService
 from backend.app.infrastructure.bm25.index import BM25IndexManager
 from backend.app.infrastructure.database.sqlite_repository import SQLiteMetadataRepository
 from backend.app.infrastructure.reranker.cross_encoder import LocalCrossEncoder
@@ -23,6 +26,13 @@ class FakeEmbeddingProvider:
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [[float(len(text)), 1.0, 0.0] for text in texts]
+
+
+class FakeGenerationProvider:
+    """Placeholder provider for container composition tests; no model call is made."""
+
+    def generate(self, prompt: str, max_output_tokens: int) -> str:
+        return "Insufficient evidence."
 
 
 def test_multi_pdf_upload_starts_persisted_jobs(tmp_path: Path) -> None:
@@ -59,6 +69,13 @@ def test_multi_pdf_upload_starts_persisted_jobs(tmp_path: Path) -> None:
         adaptive_agent=AdaptiveRetrievalAgent(
             retrieval_engine=retrieval_engine,
             reranking_service=reranking_service,
+        ),
+        generation_service=GroundedGenerationService(
+            provider=FakeGenerationProvider(),
+            model_name="test",
+            prompt_builder=GroundedPromptBuilder(),
+            context_manager=ContextWindowManager(2000),
+            max_output_tokens=64,
         ),
     )
     app = create_app()

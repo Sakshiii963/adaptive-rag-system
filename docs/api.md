@@ -1,4 +1,4 @@
-# API Reference — Milestone 5
+# API Reference — Milestone 6
 
 ## `GET /api/v1/health`
 
@@ -32,6 +32,10 @@ Runs the existing hybrid retrieval pipeline, then reranks its candidates with th
 ## `POST /api/v1/agent/run`
 
 Runs the bounded LangGraph adaptive retrieval planner. It executes hybrid retrieval, cross-encoder reranking, confidence evaluation, deterministic query rewriting, and retry transitions until the threshold is met or the retry budget is exhausted. It returns the original/re-written query, status (`evidence` or `insufficient_evidence`), confidence, reasoning steps, structured retrieval trace, and reranked evidence only.
+
+## `POST /api/v1/generation/answer`
+
+Runs the adaptive retrieval agent and sends only successful reranked evidence to local Ollama/Qwen2.5. The response includes the grounded answer, inline citation markers mapped to document/page/chunk provenance, confidence, evidence coverage, prompt version, and the supplied evidence. If the agent does not produce evidence, or the model output violates citation-format guards, it returns `Insufficient evidence.` without using outside context.
 
 ## Error contract
 

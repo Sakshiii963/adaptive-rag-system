@@ -7,9 +7,13 @@ from fastapi import Request
 
 from backend.app.agent.graph import AdaptiveRetrievalAgent
 from backend.app.core.config import Settings
+from backend.app.generation.context import ContextWindowManager
+from backend.app.generation.prompt import GroundedPromptBuilder
+from backend.app.generation.service import GroundedGenerationService
 from backend.app.infrastructure.bm25.index import BM25IndexManager
 from backend.app.infrastructure.database.sqlite_repository import SQLiteMetadataRepository
 from backend.app.infrastructure.embedding.bge_embeddings import BGEEmbeddingProvider
+from backend.app.infrastructure.llm.ollama import OllamaGenerationProvider
 from backend.app.infrastructure.reranker.cross_encoder import LocalCrossEncoder
 from backend.app.infrastructure.vector.chroma_store import ChromaChunkStore
 from backend.app.services.chunking import SemanticChunker
@@ -29,6 +33,7 @@ class ApplicationContainer:
     retrieval_engine: HybridRetrievalEngine
     reranking_service: RerankingService
     adaptive_agent: AdaptiveRetrievalAgent
+    generation_service: GroundedGenerationService
 
     @classmethod
     def create(cls, settings: Settings) -> "ApplicationContainer":
@@ -63,6 +68,15 @@ class ApplicationContainer:
             retrieval_engine=retrieval_engine,
             reranking_service=reranking_service,
         )
+        generation_service = GroundedGenerationService(
+            provider=OllamaGenerationProvider(
+                settings.ollama_base_url, settings.ollama_model, settings.ollama_timeout_seconds
+            ),
+            model_name=settings.ollama_model,
+            prompt_builder=GroundedPromptBuilder(settings.generation_prompt_version),
+            context_manager=ContextWindowManager(settings.generation_context_max_chars),
+            max_output_tokens=settings.generation_max_output_tokens,
+        )
         return cls(
             repository=repository,
             vector_store=vector_store,
@@ -71,6 +85,7 @@ class ApplicationContainer:
             retrieval_engine=retrieval_engine,
             reranking_service=reranking_service,
             adaptive_agent=adaptive_agent,
+            generation_service=generation_service,
         )
 
     def initialize(self) -> None:

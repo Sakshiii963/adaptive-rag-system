@@ -1,8 +1,8 @@
-# Milestone 5 Architecture
+# Milestone 6 Architecture
 
 ## Scope
 
-Milestone 5 adds a bounded LangGraph adaptive retrieval planner. It intentionally does not implement answer generation, citation verification, streaming, frontend behavior, or RAG evaluation.
+Milestone 6 adds strict grounded answer generation downstream of the adaptive retrieval planner. It intentionally does not implement citation entailment verification, streaming, frontend behavior, or RAG evaluation.
 
 ## Runtime flow
 
@@ -27,6 +27,10 @@ flowchart LR
     Rewrite --> Retry[Retry node]
     Retry --> Parallel
     Confidence -->|budget exhausted| Insufficient[Insufficient evidence]
+    Return --> Prompt[Versioned evidence-only prompt]
+    Prompt --> Ollama[Local Ollama / Qwen2.5]
+    Ollama --> Guard[Citation-format + hallucination guard]
+    Guard --> Answer[Grounded answer + coverage + confidence]
     Router --> Health[Health endpoint]
     Router --> System[System metadata endpoint]
     Router --> Errors[Consistent error handlers]
@@ -66,3 +70,11 @@ Run `docker compose -f docker/docker-compose.yml up --build`. The container runs
 - Conditional edges return evidence when the threshold is met, or return `insufficient_evidence` after the retry budget is exhausted.
 
 The typed `AgentState` carries the current query, attempt number, filters, results, confidence, seen-query set, trace, and reasoning steps. Every node emits a timestamped structured trace event and a structured log entry.
+
+## Grounded generation decisions
+
+- Only an agent state with `status=evidence` and non-empty reranked candidates reaches the provider.
+- `ContextWindowManager` keeps ranked evidence order, preserves document/page/chunk provenance, and clips the final passage to a configured character budget.
+- `GroundedPromptBuilder` is versioned and explicitly forbids outside knowledge, uncited factual claims, invented citation numbers, and hidden-instruction disclosure.
+- The Ollama adapter uses `stream=false`, temperature zero, and a bounded output budget. Its provider port is stateless and batch-friendly, leaving streaming as a future adapter capability.
+- The hallucination guard rejects empty output, unsupported citation indexes, missing citations, and the model's ungrounded answer format. It does not perform claim entailment; citation verification is a later milestone.

@@ -1,6 +1,7 @@
 # Runtime dependencies are canonical in pyproject.toml.
 # This file supports container and platform tooling that expects requirements.txt.
 fastapi>=0.115,<1.0
+httpx>=0.27,<1.0
 langgraph>=0.2,<1.0
 chromadb>=0.6,<2.0
 pymupdf>=1.24,<2.0

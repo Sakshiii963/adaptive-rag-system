@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     reranker_top_k: int = Field(default=5, ge=1, le=50)
     agent_confidence_threshold: float = Field(default=0.65, ge=0, le=1)
     agent_max_retries: int = Field(default=2, ge=0, le=10)
+    generation_prompt_version: str = "v1"
+    generation_context_max_chars: int = Field(default=12000, ge=1000, le=100000)
+    generation_max_output_tokens: int = Field(default=512, ge=64, le=4096)
+    ollama_timeout_seconds: float = Field(default=120, ge=1, le=600)
 
     @computed_field
     @property
