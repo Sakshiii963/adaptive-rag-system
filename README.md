@@ -2,9 +2,9 @@
 
 Local-first foundation for an adaptive, verifiable Retrieval-Augmented Generation system.
 
-## Milestone 2 status
+## Milestone 3 status
 
-The repository contains the production backend foundation plus local PDF ingestion: multi-file upload, SHA-256 duplicate detection, PyMuPDF page extraction, semantic chunking, BGE embedding integration, Chroma persistence, SQLite metadata, BM25 index construction, and persisted background-job progress. Retrieval, LangGraph query planning, reranking, and answer generation are intentionally not implemented yet.
+The repository contains the production backend foundation, local PDF ingestion, and an evidence-only hybrid retrieval engine: multi-file upload, SHA-256 duplicate detection, PyMuPDF page extraction, semantic chunking, BGE embedding integration, Chroma persistence, SQLite metadata, BM25 indexing, parallel retrieval, RRF fusion, metadata filters, confidence, and latency telemetry. LangGraph query planning, reranking, answer generation, and citation verification are intentionally not implemented yet.
 
 ## Run locally
 
@@ -29,6 +29,14 @@ curl -F "files=@/absolute/path/to/document.pdf" http://localhost:8000/api/v1/doc
 
 Submit repeated `files` form fields to upload multiple PDFs in one request. Poll the returned `job_id` at `/api/v1/jobs/{job_id}`.
 
+## Search indexed documents
+
+```bash
+curl -X POST http://localhost:8000/api/v1/retrieval/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"your question", "top_k":5}'
+```
+
 ## Project layout
 
-See `docs/architecture.md` for the Milestone 1 boundaries and run instructions.
+See `docs/architecture.md` for the current boundaries and run instructions.

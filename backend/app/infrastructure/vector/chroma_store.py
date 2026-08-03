@@ -4,7 +4,7 @@ from pathlib import Path
 
 import chromadb
 
-from backend.app.domain.entities import ChunkRecord
+from backend.app.domain.entities import ChunkRecord, RetrievalCandidate, RetrievalFilters
 
 
 class ChromaChunkStore:
@@ -45,3 +45,66 @@ class ChromaChunkStore:
     def count(self) -> int:
         """Return collection cardinality for health and integration verification."""
         return self._collection.count()
+
+    def search(
+        self, query_embedding: list[float], filters: RetrievalFilters, limit: int
+    ) -> list[RetrievalCandidate]:
+        """Perform vector similarity search and map cosine distances to normalized candidates."""
+        if limit < 1:
+            return []
+        collection_count = self._collection.count()
+        if collection_count == 0:
+            return []
+        response = self._collection.query(
+            query_embeddings=[query_embedding],
+            n_results=min(limit, collection_count),
+            where=_to_chroma_filter(filters),
+            include=["documents", "metadatas", "distances"],
+        )
+        ids = response["ids"][0]
+        documents = response["documents"][0]
+        metadatas = response["metadatas"][0]
+        distances = response["distances"][0]
+        raw_scores = [max(0.0, min(1.0, 1.0 - (float(distance) / 2.0))) for distance in distances]
+        return [
+            RetrievalCandidate(
+                chunk=ChunkRecord(
+                    id=chunk_id,
+                    document_id=str(metadata["document_id"]),
+                    filename=str(metadata["filename"]),
+                    page_number=int(metadata["page_number"]),
+                    sequence=int(metadata["sequence"]),
+                    text=str(document),
+                    upload_timestamp=_parse_timestamp(str(metadata["upload_timestamp"])),
+                ),
+                source="semantic",
+                raw_score=score,
+                normalized_score=score,
+            )
+            for chunk_id, document, metadata, score in zip(
+                ids, documents, metadatas, raw_scores, strict=True
+            )
+        ]
+
+
+def _to_chroma_filter(filters: RetrievalFilters) -> dict[str, object] | None:
+    clauses: list[dict[str, object]] = []
+    if filters.document_ids:
+        clauses.append({"document_id": _filter_value(filters.document_ids)})
+    if filters.filenames:
+        clauses.append({"filename": _filter_value(filters.filenames)})
+    if filters.page_numbers:
+        clauses.append({"page_number": _filter_value(filters.page_numbers)})
+    if not clauses:
+        return None
+    return clauses[0] if len(clauses) == 1 else {"$and": clauses}
+
+
+def _filter_value(values: tuple[str, ...] | tuple[int, ...]) -> object:
+    return values[0] if len(values) == 1 else {"$in": list(values)}
+
+
+def _parse_timestamp(value: str):
+    from datetime import datetime
+
+    return datetime.fromisoformat(value)

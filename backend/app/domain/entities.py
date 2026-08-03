@@ -49,3 +49,44 @@ class ChunkRecord:
     sequence: int
     text: str
     upload_timestamp: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class RetrievalFilters:
+    """Optional source-provenance constraints applied consistently to both retrieval channels."""
+
+    document_ids: tuple[str, ...] = ()
+    filenames: tuple[str, ...] = ()
+    page_numbers: tuple[int, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class RetrievalCandidate:
+    """A normalized candidate from one retrieval source."""
+
+    chunk: ChunkRecord
+    source: Literal["semantic", "keyword"]
+    raw_score: float
+    normalized_score: float
+
+
+@dataclass(frozen=True, slots=True)
+class HybridRetrievalCandidate:
+    """A de-duplicated candidate with source traces and fused reciprocal-rank score."""
+
+    chunk: ChunkRecord
+    semantic_score: float | None
+    keyword_score: float | None
+    rrf_score: float
+    normalized_score: float
+
+
+@dataclass(frozen=True, slots=True)
+class HybridRetrievalResult:
+    """Complete retrieval result including execution telemetry and confidence."""
+
+    candidates: tuple[HybridRetrievalCandidate, ...]
+    confidence_score: float
+    semantic_latency_ms: float
+    keyword_latency_ms: float
+    total_latency_ms: float

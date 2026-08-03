@@ -12,6 +12,7 @@ from backend.app.infrastructure.embedding.bge_embeddings import BGEEmbeddingProv
 from backend.app.infrastructure.vector.chroma_store import ChromaChunkStore
 from backend.app.services.chunking import SemanticChunker
 from backend.app.services.ingestion import IngestionService
+from backend.app.services.retrieval import HybridRetrievalEngine
 
 
 @dataclass(slots=True)
@@ -22,6 +23,7 @@ class ApplicationContainer:
     vector_store: ChromaChunkStore
     bm25_manager: BM25IndexManager
     ingestion_service: IngestionService
+    retrieval_engine: HybridRetrievalEngine
 
     @classmethod
     def create(cls, settings: Settings) -> "ApplicationContainer":
@@ -40,20 +42,30 @@ class ApplicationContainer:
             upload_directory=Path(settings.upload_directory),
             max_upload_size_bytes=settings.max_upload_size_mb * 1024 * 1024,
         )
+        retrieval_engine = HybridRetrievalEngine(
+            vector_store=vector_store,
+            embedding_provider=ingestion_service.embedding_provider,
+            bm25_manager=bm25_manager,
+            rrf_constant=settings.rrf_constant,
+            candidate_multiplier=settings.retrieval_candidate_multiplier,
+        )
         return cls(
             repository=repository,
             vector_store=vector_store,
             bm25_manager=bm25_manager,
             ingestion_service=ingestion_service,
+            retrieval_engine=retrieval_engine,
         )
 
     def initialize(self) -> None:
         """Initialize durable metadata before requests and jobs are accepted."""
         self.repository.initialize()
-        for document_id in self.repository.list_indexed_document_ids():
-            self.bm25_manager.rebuild_document_index(
-                document_id, self.repository.list_chunks(document_id)
-            )
+        indexed_chunks = [
+            chunk
+            for document_id in self.repository.list_indexed_document_ids()
+            for chunk in self.repository.list_chunks(document_id)
+        ]
+        self.bm25_manager.rebuild_all(indexed_chunks)
 
     def close(self) -> None:
         """Release resources; current adapters have no explicit close action."""

@@ -1,3 +1,3 @@
 # Retrieval module
 
-Reserved for document ingestion, chunking, vector search, BM25, fusion, and confidence evaluation in later milestones.
+The Milestone 3 implementation lives in `backend/app/services/retrieval.py` and its Chroma/BM25 adapters. This top-level module remains reserved for future extraction if retrieval becomes a separately deployable component.

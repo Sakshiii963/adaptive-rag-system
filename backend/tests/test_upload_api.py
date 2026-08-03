@@ -12,6 +12,7 @@ from backend.app.infrastructure.vector.chroma_store import ChromaChunkStore
 from backend.app.main import create_app
 from backend.app.services.chunking import SemanticChunker
 from backend.app.services.ingestion import IngestionService
+from backend.app.services.retrieval import HybridRetrievalEngine
 
 
 class FakeEmbeddingProvider:
@@ -39,6 +40,13 @@ def test_multi_pdf_upload_starts_persisted_jobs(tmp_path: Path) -> None:
         vector_store=vector_store,
         bm25_manager=BM25IndexManager(),
         ingestion_service=ingestion,
+        retrieval_engine=HybridRetrievalEngine(
+            vector_store=vector_store,
+            embedding_provider=ingestion.embedding_provider,
+            bm25_manager=ingestion.bm25_manager,
+            rrf_constant=60,
+            candidate_multiplier=4,
+        ),
     )
     app = create_app()
     with TestClient(app) as client:

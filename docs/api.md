@@ -1,4 +1,4 @@
-# API Reference — Milestone 1
+# API Reference — Milestone 3
 
 ## `GET /api/v1/health`
 
@@ -20,6 +20,10 @@ Returns document metadata, indexing state, page/chunk counts, upload time, and a
 ## `GET /api/v1/jobs/{job_id}` and `GET /api/v1/jobs?document_id=...`
 
 Return persisted indexing state, stage, completion percentage, and failure detail for frontend polling.
+
+## `POST /api/v1/retrieval/search`
+
+Runs semantic ChromaDB and BM25 keyword retrieval in parallel. The request supports `query`, optional `top_k`, and document/filename/page filters. The response contains only retrieved passages, normalized channel scores, RRF scores, confidence, and latency; it does not call an LLM or generate an answer.
 
 ## Error contract
 

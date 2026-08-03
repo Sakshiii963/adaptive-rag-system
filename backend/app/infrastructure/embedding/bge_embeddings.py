@@ -9,6 +9,9 @@ class EmbeddingProvider(Protocol):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Create one normalized vector per input text."""
 
+    def embed_query(self, query: str) -> list[float]:
+        """Create one normalized vector for a search query."""
+
 
 class BGEEmbeddingProvider:
     """Loads `BAAI/bge-small-en-v1.5` only when the first indexing job needs it."""
@@ -27,3 +30,7 @@ class BGEEmbeddingProvider:
             self._model = SentenceTransformer(self.model_name)
         vectors = self._model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
         return vectors.tolist()
+
+    def embed_query(self, query: str) -> list[float]:
+        """Embed a query with the same model and normalization as indexed chunks."""
+        return self.embed_documents([query])[0]

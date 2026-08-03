@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     chroma_collection_name: str = "rag_chunks"
     metadata_database_url: str = "sqlite:///database/metadata/app.db"
     upload_directory: str = "database/uploads"
+    retrieval_top_k: int = Field(default=5, ge=1, le=50)
+    retrieval_candidate_multiplier: int = Field(default=4, ge=1, le=20)
+    rrf_constant: int = Field(default=60, ge=1, le=1000)
 
     @computed_field
     @property
