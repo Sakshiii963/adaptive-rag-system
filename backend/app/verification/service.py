@@ -3,6 +3,7 @@
 from collections.abc import Callable
 
 from backend.app.agent.state import AgentState
+from backend.app.core.logging import get_logger
 from backend.app.domain.entities import GroundedAnswer
 from backend.app.verification.citations import CitationParser
 from backend.app.verification.claims import AtomicClaimExtractor
@@ -12,6 +13,8 @@ from backend.app.verification.models import (
     VerifiedAnswer,
 )
 from backend.app.verification.support import SemanticSupportVerifier
+
+logger = get_logger(__name__)
 
 
 class CitationVerificationService:
@@ -43,6 +46,15 @@ class CitationVerificationService:
         current = answer
         retry_count = 0
         retry_triggered = False
+        logger.info(
+            "verification_started",
+            extra={
+                "raw_answer": current.answer,
+                "answer_status": current.status,
+                "evidence_count": len(current.evidence),
+                "evidence_markers": list(range(1, len(current.evidence) + 1)),
+            },
+        )
         while True:
             report = self._verify_once(current, retry_triggered, retry_count)
             if current.status != "answer":
@@ -67,6 +79,21 @@ class CitationVerificationService:
         self, answer: GroundedAnswer, retry_triggered: bool, retry_count: int
     ) -> VerificationReport:
         claims = self.claim_extractor.extract(answer.answer)
+        logger.info(
+            "verification_claims_extracted",
+            extra={
+                "claim_count": len(claims),
+                "claims": [
+                    {
+                        "claim_id": claim.claim_id,
+                        "text": claim.text,
+                        "original_text": claim.original_text,
+                        "citation_markers": list(claim.citation_markers),
+                    }
+                    for claim in claims
+                ],
+            },
+        )
         evidence_by_marker = {
             marker: candidate for marker, candidate in enumerate(answer.evidence, start=1)
         }
@@ -107,6 +134,17 @@ class CitationVerificationService:
                     reason,
                 )
             )
+            logger.info(
+                "verification_claim_evaluated",
+                extra={
+                    "claim_id": claim.claim_id,
+                    "claim": claim.text,
+                    "citations": list(claim.citation_markers),
+                    "support_scores": scores,
+                    "supported": supported,
+                    "reason": reason,
+                },
+            )
         unsupported_claims = tuple(
             verification.claim_id for verification in verifications if not verification.supported
         )
@@ -119,7 +157,7 @@ class CitationVerificationService:
         valid_citations = sum(marker in evidence_by_marker for marker in all_citations)
         citation_validity = valid_citations / len(all_citations) if all_citations else 0.0
         grounding = round((0.7 * coverage) + (0.3 * citation_validity), 4)
-        return VerificationReport(
+        report = VerificationReport(
             claims=tuple(verifications),
             unsupported_claim_ids=unsupported_claims,
             unsupported_citations=tuple(sorted(unsupported_citations)),
@@ -128,6 +166,18 @@ class CitationVerificationService:
             retry_triggered=retry_triggered,
             retry_count=retry_count,
         )
+        logger.info(
+            "verification_completed",
+            extra={
+                "grounding_score": report.grounding_score,
+                "citation_coverage_score": report.citation_coverage_score,
+                "unsupported_claim_ids": list(report.unsupported_claim_ids),
+                "unsupported_citations": list(report.unsupported_citations),
+                "retry_triggered": retry_triggered,
+                "retry_count": retry_count,
+            },
+        )
+        return report
 
     def _verified(
         self, answer: GroundedAnswer, report: VerificationReport, status: str

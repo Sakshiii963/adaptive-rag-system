@@ -4,9 +4,12 @@ import re
 from typing import Protocol
 
 from backend.app.agent.state import AgentState
+from backend.app.core.logging import get_logger
 from backend.app.domain.entities import GroundedAnswer, GroundedCitation
 from backend.app.generation.context import ContextWindowManager
 from backend.app.generation.prompt import GroundedPromptBuilder
+
+logger = get_logger(__name__)
 
 
 class GenerationProvider(Protocol):
@@ -42,9 +45,30 @@ class GroundedGenerationService:
         if not packed:
             return self._insufficient(agent_state)
         prompt = self.prompt_builder.build(agent_state["original_query"], packed)
+        logger.info(
+            "generation_prompt_constructed",
+            extra={
+                "query": agent_state["original_query"],
+                "prompt_version": self.prompt_builder.version,
+                "evidence_count": len(packed),
+                "citation_markers": [item.marker for item in packed],
+                "prompt_chars": len(prompt),
+            },
+        )
         answer = self.provider.generate(prompt, self.max_output_tokens)
+        all_markers = _all_citations(answer)
         citations = _parse_citations(answer, len(packed))
-        if not _safe_answer(answer, citations, len(packed)):
+        safe = _safe_answer(answer, citations, len(packed))
+        logger.info(
+            "generation_raw_output",
+            extra={
+                "raw_output": answer,
+                "all_citation_markers": all_markers,
+                "valid_citation_markers": citations,
+                "safe": safe,
+            },
+        )
+        if not safe:
             return self._insufficient(agent_state)
         coverage = len(set(citations)) / len(packed)
         confidence = round(
@@ -87,13 +111,18 @@ class GroundedGenerationService:
 
 def _parse_citations(answer: str, evidence_count: int) -> list[int]:
     """Parse citation markers without asserting that a cited passage entails a claim."""
-    markers = [int(value) for value in re.findall(r"\[(\d+)\]", answer)]
+    markers = _all_citations(answer)
     return [marker for marker in markers if 1 <= marker <= evidence_count]
+
+
+def _all_citations(answer: str) -> list[int]:
+    """Return every numeric marker before range validation for diagnostics."""
+    return [int(value) for value in re.findall(r"\[(\d+)\]", answer)]
 
 
 def _safe_answer(answer: str, citations: list[int], evidence_count: int) -> bool:
     """Reject empty, uncited, malformed, or explicitly out-of-range citation output."""
     if not answer.strip() or answer.strip().lower() == "insufficient evidence.":
         return False
-    all_markers = [int(value) for value in re.findall(r"\[(\d+)\]", answer)]
+    all_markers = _all_citations(answer)
     return bool(citations) and len(all_markers) == len(citations) and evidence_count > 0

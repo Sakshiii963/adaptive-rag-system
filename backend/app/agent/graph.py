@@ -105,7 +105,23 @@ class AdaptiveRetrievalAgent:
             state,
             "hybrid_retrieval",
             started_at,
-            {"query": state["current_query"], "result_count": len(result.candidates)},
+            {
+                "query": state["current_query"],
+                "result_count": len(result.candidates),
+                "candidates": [
+                    {
+                        "chunk_id": item.chunk.id,
+                        "document_id": item.chunk.document_id,
+                        "filename": item.chunk.filename,
+                        "page": item.chunk.page_number,
+                        "semantic_score": item.semantic_score,
+                        "keyword_score": item.keyword_score,
+                        "rrf_score": item.rrf_score,
+                        "normalized_score": item.normalized_score,
+                    }
+                    for item in result.candidates
+                ],
+            },
             retrieval_result=result,
             reasoning=f"Attempt {state['attempt']}: hybrid retrieval returned {len(result.candidates)} candidates.",
         )
@@ -119,7 +135,19 @@ class AdaptiveRetrievalAgent:
             state,
             "cross_encoder_reranking",
             started_at,
-            {"query": state["current_query"], "result_count": len(result.candidates)},
+            {
+                "query": state["current_query"],
+                "result_count": len(result.candidates),
+                "candidates": [
+                    {
+                        "chunk_id": item.candidate.chunk.id,
+                        "rank": item.rank,
+                        "reranker_score": item.reranker_score,
+                        "normalized_reranker_score": item.normalized_reranker_score,
+                    }
+                    for item in result.candidates
+                ],
+            },
             reranking_result=result,
             reasoning=f"Cross-encoder reranked {len(result.candidates)} candidates.",
         )

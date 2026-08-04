@@ -83,6 +83,51 @@ def test_supported_claim_references_existing_chunk() -> None:
     assert result.grounding_score == 1.0
 
 
+def test_supported_claim_with_citation_on_following_line_is_preserved() -> None:
+    result = _service(FakeSupportScorer()).verify(_answer("Cats are supported.\n[1]"))
+
+    assert result.status == "verified"
+    assert result.report.unsupported_claim_ids == ()
+    assert result.report.claims[0].citation_markers == (1,)
+
+
+def test_citation_stays_with_claim_when_next_claim_follows() -> None:
+    result = _service(FakeSupportScorer()).verify(
+        _answer("Cats are supported. [1] Dogs are unrelated. [1]")
+    )
+
+    assert result.status == "insufficient_evidence"
+    assert [claim.citation_markers for claim in result.report.claims] == [(1,), (1,)]
+    assert result.report.unsupported_claim_ids == (2,)
+
+
+def test_trailing_citations_support_multi_sentence_summary() -> None:
+    result = _service(FakeSupportScorer()).verify(
+        _answer("Cats are supported. Cats are supported. [1]")
+    )
+
+    assert result.status == "verified"
+    assert [claim.citation_markers for claim in result.report.claims] == [(1,), (1,)]
+
+
+def test_trailing_summary_citation_does_not_hide_hallucinated_sentence() -> None:
+    result = _service(FakeSupportScorer()).verify(
+        _answer("Cats are supported. Dogs are unrelated. [1]")
+    )
+
+    assert result.status == "insufficient_evidence"
+    assert result.report.unsupported_claim_ids == (2,)
+
+
+def test_uncited_claim_is_rejected() -> None:
+    result = _service(FakeSupportScorer()).verify(_answer("Cats are supported."))
+
+    assert result.status == "insufficient_evidence"
+    assert result.answer == "Insufficient evidence."
+    assert result.report.unsupported_claim_ids == (1,)
+    assert result.report.claims[0].reason == "claim has no citation"
+
+
 def test_unknown_citation_is_rejected() -> None:
     result = _service(FakeSupportScorer()).verify(_answer("Cats are supported [2]."))
 
