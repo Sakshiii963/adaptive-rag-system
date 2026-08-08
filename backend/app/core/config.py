@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     chunk_size: int = Field(default=900, ge=200, le=4000)
     chunk_overlap: int = Field(default=150, ge=0, le=1000)
 
-    # Reserved dependencies are configured now but not initialized until later milestones.
+    # Local provider and persistence settings are initialized by the application container.
     ollama_base_url: AnyHttpUrl = "http://host.docker.internal:11434"
     ollama_model: str = "qwen2.5:7b"
     chroma_persist_directory: str = "database/chroma"

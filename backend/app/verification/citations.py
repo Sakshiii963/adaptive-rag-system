@@ -8,4 +8,7 @@ class CitationParser:
 
     def parse(self, text: str) -> tuple[int, ...]:
         """Return citation markers in appearance order, preserving duplicates for auditability."""
-        return tuple(int(value) for value in re.findall(r"\[(\d+)\]", text))
+        markers: list[int] = []
+        for group in re.findall(r"\[([\d,\s]+)\]", text):
+            markers.extend(int(value) for value in group.split(",") if value.strip().isdigit())
+        return tuple(markers)

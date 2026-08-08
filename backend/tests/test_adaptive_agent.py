@@ -13,7 +13,7 @@ from backend.app.domain.entities import (
 )
 
 
-def _hybrid_result() -> HybridRetrievalResult:
+def _hybrid_result(*, semantic: float = 0.9, keyword: float = 0.8, normalized: float = 0.9) -> HybridRetrievalResult:
     chunk = ChunkRecord(
         id="doc:p1:c1",
         document_id="doc",
@@ -24,18 +24,24 @@ def _hybrid_result() -> HybridRetrievalResult:
         upload_timestamp=datetime.now(UTC),
     )
     candidate = HybridRetrievalCandidate(
-        chunk=chunk, semantic_score=0.9, keyword_score=0.8, rrf_score=0.02, normalized_score=0.9
+        chunk=chunk,
+        semantic_score=semantic,
+        keyword_score=keyword,
+        rrf_score=0.02,
+        normalized_score=normalized,
     )
     return HybridRetrievalResult((candidate,), 0.5, 1.0, 1.0, 2.0)
 
 
 class FakeRetrieval:
-    def __init__(self) -> None:
+    def __init__(self, *results: HybridRetrievalResult) -> None:
+        self.results = list(results) or [_hybrid_result()]
         self.queries: list[str] = []
 
     def retrieve(self, query: str, filters: RetrievalFilters, top_k: int) -> HybridRetrievalResult:
         self.queries.append(query)
-        return _hybrid_result()
+        index = min(len(self.queries) - 1, len(self.results) - 1)
+        return self.results[index]
 
 
 class FakeReranking:
@@ -59,7 +65,9 @@ class RepeatingRewriter:
 
 
 def test_agent_rewrites_then_returns_evidence_with_structured_trace() -> None:
-    retrieval = FakeRetrieval()
+    weak = _hybrid_result(semantic=0.2, keyword=0.15, normalized=0.18)
+    strong = _hybrid_result()
+    retrieval = FakeRetrieval(weak, strong)
     reranking = FakeReranking([0.1, 0.95])
     agent = AdaptiveRetrievalAgent(retrieval, reranking)
 

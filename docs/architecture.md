@@ -60,7 +60,7 @@ Run `docker compose -f docker/docker-compose.yml up --build`. The container runs
 
 ## Retrieval boundaries
 
-`HybridRetrievalEngine` is an evidence-only application service. It delegates semantic search to ChromaDB, lexical search to `rank_bm25`, and executes both in parallel using a bounded thread pool. Reciprocal Rank Fusion removes duplicate chunk IDs and combines rankings without assuming semantic distances and BM25 scores share a scale. Query rewriting, LangGraph orchestration, generation, and citation verification remain later milestones; reranking is applied separately by `RerankingService`.
+`HybridRetrievalEngine` is an evidence-only application service. It delegates semantic search to ChromaDB, lexical search to `rank_bm25`, and executes both in parallel using a bounded thread pool. Reciprocal Rank Fusion removes duplicate chunk IDs and combines rankings without assuming semantic distances and BM25 scores share a scale. Query rewriting, LangGraph orchestration, generation, and citation verification consume its results downstream; reranking is applied separately by `RerankingService`.
 
 ## Reranking boundaries
 
@@ -77,6 +77,8 @@ Run `docker compose -f docker/docker-compose.yml up --build`. The container runs
 
 The typed `AgentState` carries the current query, attempt number, filters, results, confidence, seen-query set, trace, and reasoning steps. Every node emits a timestamped structured trace event and a structured log entry.
 
+The confidence breakdown also records retrieval confidence, reranker margin, semantic/keyword agreement, chunk coverage, document coverage, and stage-mismatch diagnostics. Multi-document synthesis retains a strong first-stage retrieval signal when reranker scores are anomalously low; the configured confidence threshold is not changed.
+
 ## Grounded generation decisions
 
 - Only an agent state with `status=evidence` and non-empty reranked candidates reaches the provider.
@@ -92,3 +94,5 @@ The typed `AgentState` carries the current query, attempt number, filters, resul
 - `SemanticSupportVerifier` sends `(claim, cited passage)` pairs through the existing local cross-encoder and requires every cited passage for a claim to meet the configured normalized support threshold.
 - Coverage is the supported-claim fraction; grounding combines claim coverage and valid-citation fraction. Unsupported claims and unknown citation IDs are never silently treated as supported.
 - The verification endpoint injects targeted retry and regeneration callbacks. After the retry budget, only supported claims may remain; if configured minimum coverage is not met, the final answer is `Insufficient evidence.`
+- Prompt marker numbering is assigned once by `ContextWindowManager` over the packed reranked tuple. `GroundedAnswer.citations` preserves the explicit marker-to-candidate mapping, and verification audits it against ordered evidence before semantic scoring. Mapping logs include marker, expected/actual chunk ID, document ID, filename, and page.
+- The deterministic claim splitter avoids boundaries inside decimals, initials, quoted punctuation, and common abbreviations such as `vs.` and `e.g.`. It supports inline, adjacent, grouped, and paragraph-level markers without bypassing semantic verification.

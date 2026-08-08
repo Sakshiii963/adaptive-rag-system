@@ -1,4 +1,4 @@
-"""HTTP adapter for local Ollama generation; streaming is deliberately disabled in Milestone 6."""
+"""HTTP adapter for local Ollama generation; streaming remains intentionally disabled."""
 
 import httpx
 

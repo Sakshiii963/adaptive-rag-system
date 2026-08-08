@@ -4,7 +4,7 @@ from typing import Protocol
 
 
 class QueryRewriter(Protocol):
-    """Port for a future local rewrite strategy; Milestone 5 remains non-LLM."""
+    """Port for deterministic local query rewriting without an LLM."""
 
     def rewrite(self, query: str, attempt: int) -> str:
         """Return a semantically focused alternative query."""

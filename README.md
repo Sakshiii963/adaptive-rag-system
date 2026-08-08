@@ -4,6 +4,21 @@ Adaptive Agentic RAG is a local-first, open-source knowledge assistant for relia
 
 Everything runs locally. There are no OpenAI, Claude, Gemini, Pinecone, or paid-service dependencies.
 
+## Problem and approach
+
+Fixed RAG pipelines often answer after weak retrieval, producing plausible but unsupported claims. This project makes retrieval quality an explicit control point: hybrid evidence is reranked and confidence-gated before generation; weak evidence receives a deterministic retry; and every generated claim is independently checked against its cited passages. If a claim cannot be grounded, the final response is filtered or becomes `Insufficient evidence.`
+
+```text
+PDF upload -> page extraction/chunking -> BGE + BM25 indexes
+-> parallel retrieval -> RRF fusion -> cross-encoder reranking
+-> confidence evaluation -> deterministic rewrite/retry
+-> context packing -> Ollama/Qwen2.5 grounded answer
+-> atomic claims -> explicit citation mapping -> semantic verification
+-> answer, evidence, scores, and trace
+```
+
+Summary and comparison queries can span multiple documents. Prompt markers are assigned from the ordered packed reranked list, and verification uses the generator's explicit marker-to-candidate map rather than re-inferring document order.
+
 ## Capabilities
 
 - Multi-file PDF upload with SHA-256 duplicate detection and background indexing.
@@ -56,6 +71,28 @@ python evaluation/run_evaluation.py --dataset evaluation/datasets/sample_questio
 ```
 
 The report includes retrieval precision/recall, API-provided faithfulness and relevancy proxies, optional RAGAS faithfulness/relevancy, mean and p95 latency, and throughput. Add gold `relevant_chunk_ids` to dataset cases for meaningful retrieval scores. Reports are written to `evaluation/reports/`.
+
+## Example API workflow
+
+```bash
+curl -F "files=@docs/demo/adaptive-retrieval-brief.pdf" \
+  -F "files=@docs/demo/verification-policy.pdf" \
+  http://localhost:8000/api/v1/documents/upload
+
+curl -X POST http://localhost:8000/api/v1/verification/answer \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"Summarize both uploaded documents.","top_k":5}'
+```
+
+The response contains the final answer, confidence/grounding/citation scores, claim report, reranked evidence with filename/page/chunk provenance, and the adaptive trace. Structured backend logs additionally expose raw provider output and per-marker mapping diagnostics.
+
+## Current limitations
+
+- Scanned/image-only PDFs require OCR before indexing.
+- SQLite and Chroma persistence target local/single-node deployments.
+- Ollama quality and latency depend on the local model and hardware.
+- Semantic verification is conservative when a claim cites many unrelated passages; diagnostics identify the exact low-support claim and scores.
+- Streaming, authentication, document deletion, and a visual evaluation dashboard remain future work.
 
 ## Quality checks
 

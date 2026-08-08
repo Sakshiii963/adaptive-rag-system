@@ -3,6 +3,10 @@
 from threading import Lock
 from typing import Protocol
 
+from backend.app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 class CrossEncoderProvider(Protocol):
     """Port allowing the reranking service to be tested without model downloads."""
@@ -30,8 +34,27 @@ class LocalCrossEncoder:
                 if self._model is None:
                     from sentence_transformers import CrossEncoder
 
-                    self._model = CrossEncoder(self.model_name)
+                    self._model = CrossEncoder(self.model_name, device="cpu")
         scores = self._model.predict(
-            pairs, batch_size=batch_size, show_progress_bar=False, convert_to_numpy=True
+            pairs,
+            batch_size=batch_size,
+            show_progress_bar=False,
+            convert_to_numpy=True,
         )
-        return [float(score) for score in scores]
+        import math
+
+        fixed_scores = [float(score) for score in scores]
+        invalid_count = sum(not math.isfinite(score) for score in fixed_scores)
+        fixed_scores = [score if math.isfinite(score) else -20.0 for score in fixed_scores]
+        logger.info(
+            "cross_encoder_batch_completed",
+            extra={
+                "model": self.model_name,
+                "pair_count": len(pairs),
+                "batch_size": batch_size,
+                "invalid_score_count": invalid_count,
+                "min_score": min(fixed_scores),
+                "max_score": max(fixed_scores),
+            },
+        )
+        return fixed_scores

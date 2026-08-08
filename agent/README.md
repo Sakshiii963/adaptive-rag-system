@@ -1,3 +1,5 @@
-# Agent module
+# Adaptive retrieval agent
 
-Milestone 5 is implemented in `backend/app/agent/`. `graph.py` defines the LangGraph workflow, `state.py` defines typed graph state, `rewrite.py` provides deterministic local rewriting, and `confidence.py` evaluates evidence quality. The graph never calls an LLM or generates an answer; Milestone 6 consumes its successful evidence downstream.
+`backend/app/agent/` contains the typed LangGraph planner. It runs hybrid retrieval, cross-encoder reranking, confidence evaluation, deterministic query rewriting, and bounded retries. It returns evidence and a structured trace only; generation and verification are downstream services.
+
+The confidence evaluator records retrieval/reranker components, document coverage, stage mismatches, and multi-document synthesis signals without changing configured thresholds.

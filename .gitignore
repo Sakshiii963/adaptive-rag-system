@@ -15,6 +15,8 @@ database/chroma/
 database/bm25/
 database/metadata/*.db
 database/uploads/
+backend/database/
+backend/app.zip
 models/cache/
 frontend/node_modules/
 frontend/.next/

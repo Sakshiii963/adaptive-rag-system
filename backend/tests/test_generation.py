@@ -49,6 +49,42 @@ def _agent_state(status: str = "evidence") -> dict:
     }
 
 
+def _two_document_state() -> dict:
+    timestamp = datetime.now(UTC)
+    candidates = []
+    for index, (document_id, filename, text) in enumerate(
+        (
+            ("doc-a", "adaptive-retrieval.pdf", "Adaptive retrieval retries weak queries."),
+            ("doc-b", "verification-policy.pdf", "Audit records are retained for seven years."),
+        ),
+        start=1,
+    ):
+        chunk = ChunkRecord(
+            f"{document_id}:p1:c1",
+            document_id,
+            filename,
+            1,
+            1,
+            text,
+            timestamp,
+        )
+        candidates.append(
+            RerankedCandidate(
+                HybridRetrievalCandidate(chunk, 0.9, 0.8, 0.02, 0.9),
+                4.0,
+                0.98,
+                index,
+            )
+        )
+    return {
+        "original_query": "Summarize both documents.",
+        "rewritten_query": None,
+        "status": "evidence",
+        "confidence": 0.9,
+        "reranking_result": RerankingResult(tuple(candidates), 0.9, 2.0, "test-reranker", 8),
+    }
+
+
 def test_grounded_generation_uses_only_numbered_provenance_evidence() -> None:
     provider = FakeGenerationProvider("Documents are stored locally [1].")
     service = GroundedGenerationService(
@@ -103,3 +139,22 @@ def test_context_window_clips_and_preserves_ranked_evidence() -> None:
 
     assert packed[0].marker == 1
     assert packed[0].candidate.candidate.chunk.id == "doc:p1:c1"
+
+
+def test_two_document_summary_uses_stable_cross_document_marker_numbering() -> None:
+    provider = FakeGenerationProvider(
+        "Adaptive retrieval retries weak queries [1]. Audit records are retained for seven years [2]."
+    )
+    service = GroundedGenerationService(
+        provider, "qwen2.5:7b", GroundedPromptBuilder(), ContextWindowManager(2000), 128
+    )
+
+    answer = service.generate(_two_document_state())
+
+    assert [citation.marker for citation in answer.citations] == [1, 2]
+    assert [citation.candidate.candidate.chunk.document_id for citation in answer.citations] == [
+        "doc-a",
+        "doc-b",
+    ]
+    assert "[1] document_id=doc-a" in provider.prompts[0]
+    assert "[2] document_id=doc-b" in provider.prompts[0]

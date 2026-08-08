@@ -43,6 +43,8 @@ Runs generation, extracts atomic claims, parses inline citations, verifies every
 
 ## Error contract
 
+Citation markers are assigned in prompt order: `[1]` is the first packed reranked chunk and `[2]` the second, across all documents. The verifier audits that explicit mapping and logs expected/actual chunk IDs, document ID, filename, and page. It accepts adjacent, grouped, and paragraph-scoped markers while preserving per-claim semantic checks.
+
 All handled errors share this shape:
 
 ```json

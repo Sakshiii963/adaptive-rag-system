@@ -52,6 +52,7 @@ class GroundedGenerationService:
                 "prompt_version": self.prompt_builder.version,
                 "evidence_count": len(packed),
                 "citation_markers": [item.marker for item in packed],
+                "marker_map": [_marker_details(item.marker, item.candidate) for item in packed],
                 "prompt_chars": len(prompt),
             },
         )
@@ -109,15 +110,40 @@ class GroundedGenerationService:
         )
 
 
-def _parse_citations(answer: str, evidence_count: int) -> list[int]:
-    """Parse citation markers without asserting that a cited passage entails a claim."""
-    markers = _all_citations(answer)
-    return [marker for marker in markers if 1 <= marker <= evidence_count]
-
-
 def _all_citations(answer: str) -> list[int]:
-    """Return every numeric marker before range validation for diagnostics."""
-    return [int(value) for value in re.findall(r"\[(\d+)\]", answer)]
+    """Return every numeric citation marker, supporting [1], [1,2], [1, 2, 3]."""
+
+    markers: list[int] = []
+
+    for group in re.findall(r"\[([\d,\s]+)\]", answer):
+        for value in group.split(","):
+            value = value.strip()
+            if value.isdigit():
+                markers.append(int(value))
+
+    return markers
+
+
+def _parse_citations(answer: str, evidence_count: int) -> list[int]:
+    """Keep only citations that reference existing evidence."""
+
+    return [
+        marker
+        for marker in _all_citations(answer)
+        if 1 <= marker <= evidence_count
+    ]
+
+
+def _marker_details(marker: int, candidate) -> dict[str, object]:
+    """Render the exact prompt marker-to-provenance mapping for diagnostics."""
+    chunk = candidate.candidate.chunk
+    return {
+        "marker": marker,
+        "chunk_id": chunk.id,
+        "document_id": chunk.document_id,
+        "filename": chunk.filename,
+        "page": chunk.page_number,
+    }
 
 
 def _safe_answer(answer: str, citations: list[int], evidence_count: int) -> bool:

@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 from backend.app.agent.state import AgentState
 from backend.app.core.logging import get_logger
-from backend.app.domain.entities import GroundedAnswer
+from backend.app.domain.entities import GroundedAnswer, RerankedCandidate
 from backend.app.verification.citations import CitationParser
 from backend.app.verification.claims import AtomicClaimExtractor
 from backend.app.verification.models import (
@@ -53,6 +53,7 @@ class CitationVerificationService:
                 "answer_status": current.status,
                 "evidence_count": len(current.evidence),
                 "evidence_markers": list(range(1, len(current.evidence) + 1)),
+                "marker_map": _marker_map(current),
             },
         )
         while True:
@@ -94,8 +95,32 @@ class CitationVerificationService:
                 ],
             },
         )
-        evidence_by_marker = {
+        evidence_by_marker = _evidence_by_marker(answer)
+        expected_by_marker = {
             marker: candidate for marker, candidate in enumerate(answer.evidence, start=1)
+        }
+        for marker in sorted(set(expected_by_marker) | set(evidence_by_marker)):
+            expected = expected_by_marker.get(marker)
+            actual = evidence_by_marker.get(marker)
+            logger.info(
+                "verification_marker_mapping",
+                extra={
+                    "marker": marker,
+                    "expected_chunk_id": expected.candidate.chunk.id if expected else None,
+                    "actual_chunk_id": actual.candidate.chunk.id if actual else None,
+                    "document_id": actual.candidate.chunk.document_id if actual else None,
+                    "source_filename": actual.candidate.chunk.filename if actual else None,
+                    "source_page": actual.candidate.chunk.page_number if actual else None,
+                    "mapping_matches_order": bool(
+                        expected and actual and expected.candidate.chunk.id == actual.candidate.chunk.id
+                    ),
+                },
+            )
+        mapping_mismatches = {
+            marker
+            for marker in set(expected_by_marker) & set(evidence_by_marker)
+            if expected_by_marker[marker].candidate.chunk.id
+            != evidence_by_marker[marker].candidate.chunk.id
         }
         verifications: list[ClaimVerification] = []
         unsupported_citations: set[int] = set()
@@ -103,7 +128,8 @@ class CitationVerificationService:
             invalid = {
                 marker for marker in claim.citation_markers if marker not in evidence_by_marker
             }
-            unsupported_citations.update(invalid)
+            mismatched = set(claim.citation_markers) & mapping_mismatches
+            unsupported_citations.update(invalid | mismatched)
             cited_candidates = [
                 evidence_by_marker[marker]
                 for marker in claim.citation_markers
@@ -115,6 +141,9 @@ class CitationVerificationService:
             if invalid:
                 supported = False
                 reason = "citation references an evidence marker that does not exist"
+            elif mismatched:
+                supported = False
+                reason = "citation marker maps to a different evidence chunk than prompt order"
             elif not claim.citation_markers:
                 supported = False
                 reason = "claim has no citation"
@@ -226,3 +255,28 @@ class CitationVerificationService:
         return (
             " ".join(claims[claim_id] for claim_id in report.unsupported_claim_ids) or answer.answer
         )
+
+
+def _evidence_by_marker(answer: GroundedAnswer) -> dict[int, RerankedCandidate]:
+    """Use the generator's explicit marker map, falling back for legacy callers."""
+    if answer.citations:
+        return {citation.marker: citation.candidate for citation in answer.citations}
+    return {marker: candidate for marker, candidate in enumerate(answer.evidence, start=1)}
+
+
+def _marker_map(answer: GroundedAnswer) -> list[dict[str, object]]:
+    """Expose every marker's provenance for request-level diagnostics."""
+    mapped = _evidence_by_marker(answer)
+    result: list[dict[str, object]] = []
+    for marker, candidate in sorted(mapped.items()):
+        chunk = candidate.candidate.chunk
+        result.append(
+            {
+                "marker": marker,
+                "chunk_id": chunk.id,
+                "document_id": chunk.document_id,
+                "filename": chunk.filename,
+                "page": chunk.page_number,
+            }
+        )
+    return result

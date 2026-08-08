@@ -5,7 +5,10 @@ from time import perf_counter
 
 from langgraph.graph import END, START, StateGraph
 
-from backend.app.agent.confidence import RetrievalConfidenceEvaluator
+from backend.app.agent.confidence import (
+    RetrievalConfidenceEvaluator,
+    _confidence_components,
+)
 from backend.app.agent.rewrite import HeuristicQueryRewriter, QueryRewriter
 from backend.app.agent.state import AgentState, TraceStep
 from backend.app.core.logging import get_logger
@@ -154,7 +157,8 @@ class AdaptiveRetrievalAgent:
 
     def _evaluate_confidence_node(self, state: AgentState) -> dict:
         started_at = perf_counter()
-        confidence = self.confidence_evaluator.evaluate(state["reranking_result"])
+        breakdown = self.confidence_evaluator.breakdown(state["reranking_result"])
+        confidence = breakdown.score
         accepted = confidence >= state["confidence_threshold"]
         exhausted = (not accepted) and state["attempt"] >= state["max_retries"]
         details = {
@@ -162,6 +166,7 @@ class AdaptiveRetrievalAgent:
             "threshold": state["confidence_threshold"],
             "accepted": accepted,
             "attempt": state["attempt"],
+            **_confidence_components(breakdown),
         }
         return self._record(
             state,
