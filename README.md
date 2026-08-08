@@ -117,6 +117,4 @@ docker compose -f docker/docker-compose.yml config
 - [Interview preparation](docs/interview_questions.md)
 - [Contributing](CONTRIBUTING.md)
 
-## License
 
-Released under the MIT License. See [LICENSE](LICENSE).
